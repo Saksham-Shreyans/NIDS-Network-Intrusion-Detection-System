@@ -8,7 +8,7 @@ from typing import Dict, List, Optional
 
 from pipeline.aggregator import HostProfileAggregator
 from sasplite.extractor import FlowExtractor
-from sasplite.geoip import GeoIPLookup
+
 
 
 def _parse_hour_str(pcap_path: Path) -> str:
@@ -73,11 +73,10 @@ def run(
     cfg,
     stop_event: Event,
     log,
-    geoip: GeoIPLookup,
     status_list: List[Dict],
     status_dict=None,
 ):
-    extractor  = FlowExtractor(cfg, geoip, log)
+    extractor  = FlowExtractor(cfg, log)
     aggregator = HostProfileAggregator(cfg, log)
 
     log.info("Watcher started")

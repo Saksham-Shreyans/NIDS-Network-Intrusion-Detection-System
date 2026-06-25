@@ -6,7 +6,7 @@ import dpkt
 import numpy as np
 import pandas as pd
 
-from sasplite.geoip import GeoIPLookup
+
 
 
 class FlowState:
@@ -169,7 +169,7 @@ def _active_idle(ts_arr: np.ndarray, gap: float) -> Tuple[float, float]:
 
 
 def _aggregate_flow(
-    key: Tuple, state: FlowState, geoip: GeoIPLookup, cfg
+    key: Tuple, state: FlowState, cfg
 ) -> Optional[Dict]:
     pkts = state.pkts
     if not pkts:
@@ -256,14 +256,12 @@ def _aggregate_flow(
         "n_bwd_pkts":           len(bwd),
         "n_fwd_bytes":          int(fwd_pay.sum()) if len(fwd_pay) else 0,
         "n_bwd_bytes":          int(bwd_pay.sum()) if len(bwd_pay) else 0,
-        "dst_asn":              geoip.get_asn(dst_ip),
     }
 
 
 class FlowExtractor:
-    def __init__(self, cfg, geoip: GeoIPLookup, log):
+    def __init__(self, cfg, log):
         self.cfg = cfg
-        self.geoip = geoip
         self.log = log
 
     def extract(self, pcap_path: Path) -> pd.DataFrame:
@@ -284,7 +282,7 @@ class FlowExtractor:
 
         rows = []
         for key, state in flows.items():
-            row = _aggregate_flow(key, state, self.geoip, self.cfg)
+            row = _aggregate_flow(key, state, self.cfg)
             if row is not None:
                 rows.append(row)
 

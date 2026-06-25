@@ -37,9 +37,6 @@ output/
 /data/
 *.csv.tmp
 
-# GeoIP databases (large binary files — download separately)
-*.mmdb
-
 # Distribution / packaging
 dist/
 build/

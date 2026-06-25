@@ -13,7 +13,6 @@ sFlow UDP datagrams — all running continuously with a single command.
 2. [Prerequisites](#prerequisites)
 3. [Installation](#installation)
 4. [Configuration](#configuration)
-5. [GeoIP Setup](#geoip-setup)
 6. [Switch Setup (Arista EOS)](#switch-setup-arista-eos)
 7. [Running the Pipeline](#running-the-pipeline)
 8. [Command-Line Options](#command-line-options)
@@ -71,7 +70,6 @@ single entry point.
 | Python | 3.9+ | Standard library only for core parsing |
 | pip packages | see below | No system binaries needed |
 | Arista EOS switch | any modern | eAPI must be enabled; mirror/SPAN interface required |
-| GeoLite2 databases | optional | ASN and City `.mmdb` files from MaxMind |
 
 **Zero system binary dependencies.** No `apt install` required beyond Python.
 No Zeek, tshark, NFStream, sflowtool, or nfdump.
@@ -104,7 +102,6 @@ PyYAML>=6.0.1        # config.yaml parsing
 pandas>=2.1.0        # DataFrames for features and aggregation
 numpy>=1.26.0        # vectorised feature computation
 scipy>=1.11.0        # entropy calculation in network_ts
-geoip2>=4.7.0        # MaxMind GeoLite2 ASN/City lookup
 psutil>=5.9.0        # process/resource monitoring
 ```
 
@@ -153,8 +150,6 @@ capture:
 
 # ── Feature extraction ─────────────────────────────────────────────
 sasplite:
-  geoip_asn_db:  "/usr/share/GeoIP/GeoLite2-ASN.mmdb"
-  geoip_city_db: "/usr/share/GeoIP/GeoLite2-City.mmdb"
   subflow_gap_s: 1.0     # inter-packet silence > this value ends an active burst
 
 # ── Aggregation ────────────────────────────────────────────────────
@@ -206,30 +201,6 @@ timeouts:
 ```bash
 chmod 600 config.yaml   # restrict read access to owner only
 ```
-
----
-
-## GeoIP Setup
-
-The pipeline uses MaxMind GeoLite2 databases for ASN enrichment of destination
-IPs. This is optional — the pipeline runs without them, but `dst_asn` fields
-will show `"UNKNOWN"`.
-
-### Download GeoLite2 databases
-
-1. Create a free account at [maxmind.com](https://www.maxmind.com/en/geolite2/signup)
-2. Download **GeoLite2-ASN.mmdb** and **GeoLite2-City.mmdb**
-3. Place them at the paths set in `config.yaml`:
-
-```bash
-# Default paths (change in config.yaml if needed)
-sudo mkdir -p /usr/share/GeoIP
-sudo cp GeoLite2-ASN.mmdb  /usr/share/GeoIP/
-sudo cp GeoLite2-City.mmdb /usr/share/GeoIP/
-```
-
-Private IPs (RFC 1918: `10.x`, `172.16-31.x`, `192.168.x`, `127.x`) always
-return `"PRIVATE"` without a database lookup.
 
 ---
 
@@ -441,7 +412,6 @@ One row per TCP/UDP/ICMP flow. Millions of rows for busy networks.
 | `n_bwd_pkts` | int | Count of backward packets |
 | `n_fwd_bytes` | int | Total forward payload bytes |
 | `n_bwd_bytes` | int | Total backward payload bytes |
-| `dst_asn` | str | Destination ASN (e.g. `AS15169`) or `PRIVATE`/`UNKNOWN` |
 
 ### host_profiles.csv (per-host behavioral profiles)
 
@@ -458,7 +428,6 @@ Key columns beyond the flow features:
 | `dir_ratio_bytes` | Bytes sent / bytes received (upload/download ratio) |
 | `unique_dest_ip_count` | Number of distinct destination IPs contacted |
 | `unique_dest_port_count` | Number of distinct destination ports used |
-| `unique_dest_asn_count` | Number of distinct destination ASNs |
 | `global_flow_share` | This host's flows as fraction of all network flows |
 | `global_byte_share` | This host's bytes as fraction of all network bytes |
 | `global_port_share` | This host's unique ports as fraction of network-wide unique ports |
@@ -565,12 +534,6 @@ idle period.
 
 These are 0 for UDP and ICMP flows.
 
-### ASN enrichment
-
-`dst_asn` is populated from MaxMind GeoLite2-ASN for each unique destination
-IP. Lookups are cached in memory to avoid repeated disk reads. Private IPs
-return `"PRIVATE"`. Missing database returns `"UNKNOWN"`.
-
 ---
 
 ## Module Reference
@@ -591,8 +554,6 @@ nids/
 │   ├── extractor.py            dpkt pcap reader → flows DataFrame (45 cols)
 │   │                           Classes: FlowExtractor, FlowState
 │   │                           Functions: _process_packet(), _aggregate_flow()
-│   └── geoip.py                MaxMind GeoLite2 wrapper with RFC1918 check
-│                               Class: GeoIPLookup
 │
 ├── pipeline/
 │   ├── watcher.py              Queue consumer: pcap → extract → aggregate → ts
@@ -774,11 +735,9 @@ python3 start_nids.py > /var/log/nids/stdout.log 2>&1
 # Drop a path directly into the watcher queue from Python
 import queue, threading
 from utils.config_loader import load_config
-from sasplite.geoip import GeoIPLookup
 from pipeline.watcher import run as run_watcher
 
 cfg      = load_config()
-geoip    = GeoIPLookup(cfg.sasplite.geoip_asn_db, cfg.sasplite.geoip_city_db)
 q        = queue.Queue()
 stop     = threading.Event()
 status   = []
@@ -787,23 +746,19 @@ q.put("/path/to/existing.pcap")
 stop_after_one = threading.Timer(5, stop.set)
 stop_after_one.start()
 
-run_watcher(q, cfg, stop, print, geoip, status)
-geoip.close()
+run_watcher(q, cfg, stop, print, status)
 ```
 
 Or use the standalone extractor directly:
 ```python
 from pathlib import Path
 from utils.config_loader import load_config
-from sasplite.geoip import GeoIPLookup
 from sasplite.extractor import FlowExtractor
 import logging
 
 cfg     = load_config()
-geoip   = GeoIPLookup(cfg.sasplite.geoip_asn_db, cfg.sasplite.geoip_city_db)
 log     = logging.getLogger("test")
-ex      = FlowExtractor(cfg, geoip, log)
+ex      = FlowExtractor(cfg, log)
 df      = ex.extract(Path("capture.pcap"))
 print(df.head())
-geoip.close()
 ```

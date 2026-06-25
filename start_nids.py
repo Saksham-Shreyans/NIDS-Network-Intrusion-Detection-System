@@ -76,10 +76,6 @@ def main():
         "config":       cfg,
     }
 
-    # ── GeoIP ───────────────────────────────────────────────────────
-    from sasplite.geoip import GeoIPLookup
-    geoip = GeoIPLookup(cfg.sasplite.geoip_asn_db, cfg.sasplite.geoip_city_db)
-
     threads = []
 
     # ── Capture thread ──────────────────────────────────────────────
@@ -98,7 +94,7 @@ def main():
     from pipeline.watcher import run as run_watcher
     wt = threading.Thread(
         target=run_watcher,
-        args=(pcap_queue, cfg, stop_event, log, geoip, status_list),
+        args=(pcap_queue, cfg, stop_event, log, status_list),
         kwargs={"status_dict": shared_status["watcher"]},
         name="watcher",
         daemon=False,
@@ -157,7 +153,6 @@ def main():
         if not t.daemon:
             t.join()
 
-    geoip.close()
     log.info("NIDS Pipeline stopped cleanly")
     print("Stopped.")
 

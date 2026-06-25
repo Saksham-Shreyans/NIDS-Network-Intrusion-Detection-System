@@ -17,8 +17,6 @@ capture:
 
 # ── Feature extraction ─────────────────────────────────────────────
 sasplite:
-  geoip_asn_db:  "/usr/share/GeoIP/GeoLite2-ASN.mmdb"
-  geoip_city_db: "/usr/share/GeoIP/GeoLite2-City.mmdb"
   subflow_gap_s: 1.0     # silence gap that ends an active burst (seconds)
 
 # ── Aggregation ────────────────────────────────────────────────────
