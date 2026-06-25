@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+venv/
+.venv/
+env/
+.env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Config with credentials — use config.yaml.example as template
+config.yaml
+
+# Runtime output
+logs/*.log
+logs/*.log.*
+output/
+!output/.gitkeep
+*.pcap
+*.pcap.gz
+
+# Collector CSV output
+/data/
+*.csv.tmp
+
+# GeoIP databases (large binary files — download separately)
+*.mmdb
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
